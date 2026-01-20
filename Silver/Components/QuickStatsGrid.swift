@@ -4,33 +4,54 @@ struct QuickStatsGrid: View {
 
     @ObservedObject var homeVM: HomeViewModel
 
-    var body: some View {
-        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
+    private let columns = [
+        GridItem(.flexible()),
+        GridItem(.flexible())
+    ]
 
-            StatBox(title: "Last Update", value: homeVM.lastUpdateDisplay)
-            StatBox(title: "Gold/Silver", value: String(format: "%.2f", homeVM.goldSilverRatio))
-            StatBox(title: "Change Today", value: String(format: "%.2f%%", homeVM.changePercentToday))
-            StatBox(title: "Spot Price", value: String(format: "$%.2f", homeVM.currentSpot))
+    var body: some View {
+        LazyVGrid(columns: columns, spacing: 16) {
+
+            StatBox(
+                title: "Gold / Silver Ratio",
+                value: String(format: "%.2f", homeVM.goldSilverRatio)
+            )
+
+            StatBox(
+                title: "Change Today",
+                value: String(format: "%.2f%%", homeVM.changePercentToday)
+            )
+
+            StatBox(
+                title: "Last Update",
+                value: homeVM.lastUpdateDisplay
+            )
         }
     }
 }
 
-struct StatBox: View {
+// MARK: - Local Stat Card
+
+private struct StatBox: View {
     let title: String
     let value: String
 
     var body: some View {
-        VStack(spacing: 4) {
+        VStack(alignment: .leading, spacing: 6) {
             Text(title)
                 .font(.caption)
-                .foregroundColor(.white.opacity(0.7))
+                .foregroundColor(.white.opacity(0.6))
+
             Text(value)
-                .font(.headline)
+                .font(.headline.weight(.semibold))
                 .foregroundColor(.white)
+                .lineLimit(2)
         }
-        .frame(maxWidth: .infinity)
-        .padding()
-        .background(Color.white.opacity(0.05))
-        .cornerRadius(12)
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(Color.white.opacity(0.05))
+        )
     }
 }

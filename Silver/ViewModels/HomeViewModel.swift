@@ -5,79 +5,35 @@ import Combine
 @MainActor
 final class HomeViewModel: ObservableObject {
 
-    @Published var currentSpot: Double = 92.50
-    @Published var previousSpot: Double = 92.50
+    @Published var currentSpot: Double = 0.0
     @Published var changePercentToday: Double = 0.0
-    @Published var goldSilverRatio: Double = 80.0
+    @Published var goldSilverRatio: Double = 0.0
     @Published var lastUpdate: Date = Date()
     @Published var errorMessage: String?
     @Published var isLoading: Bool = false
-    
-    private var refreshTask: Task<Void, Never>? = nil
-    private var timer: Timer?
-    
-    private var apiKey: String {
-        Secrets.metalPriceAPIKey
-    }
-    
-    init() {
-        Task { await fetchLatestPrices() }
-        startAutoRefresh()
-    }
-    
-    deinit {
-        timer?.invalidate()
-        refreshTask?.cancel()
-    }
-    
-    private func startAutoRefresh() {
-        timer = Timer.scheduledTimer(withTimeInterval: 60.0, repeats: true) { [weak self] _ in
-            Task { @MainActor in
-                self?.refreshTask = Task { await self?.fetchLatestPrices() }
-            }
+
+    private let priceService: PriceService
+
+    init(priceService: PriceService = PriceService()) {
+        self.priceService = priceService
+
+        priceService.$currentSpot.assign(to: &$currentSpot)
+        priceService.$changePercentToday.assign(to: &$changePercentToday)
+        priceService.$goldSilverRatio.assign(to: &$goldSilverRatio)
+        priceService.$lastUpdate.assign(to: &$lastUpdate)
+        priceService.$errorMessage.assign(to: &$errorMessage)
+        priceService.$isLoading.assign(to: &$isLoading)
+
+        Task {
+            await priceService.fetchLatestPrices()
         }
     }
-    
-    func fetchLatestPrices() async {
-        guard !isLoading else { return }
-        isLoading = true
-        errorMessage = nil
-        
-        let urlString = "https://api.metalpriceapi.com/v1/latest?api_key=\(apiKey)&base=USD&currencies=XAG,XAU"
-        guard let url = URL(string: urlString) else {
-            errorMessage = "Invalid URL"
-            isLoading = false
-            return
-        }
-        
-        do {
-            let (data, _) = try await URLSession.shared.data(from: url)
-            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let success = json["success"] as? Bool, success,
-                  let rates = json["rates"] as? [String: Double],
-                  let xagRate = rates["XAG"],
-                  let xauRate = rates["XAU"]
-            else {
-                throw NSError(domain: "APIError", code: 0, userInfo: [NSLocalizedDescriptionKey: "Invalid response format"])
-            }
-            
-            previousSpot = currentSpot
-            currentSpot = xagRate
-            goldSilverRatio = xauRate / xagRate
-            changePercentToday = ((currentSpot - previousSpot) / previousSpot) * 100
-            lastUpdate = Date()
-            
-            UserDefaults.standard.set(currentSpot, forKey: "LastSpotPrice")
-            UserDefaults.standard.set(lastUpdate, forKey: "LastSpotDate")
-            
-        } catch {
-            errorMessage = "Failed to load prices: \(error.localizedDescription)"
-            print("❌ HomeViewModel fetchLatestPrices error:", error)
-        }
-        
-        isLoading = false
+
+    // Public method for views to trigger refresh safely
+    func refreshPrices() async {
+        await priceService.fetchLatestPrices()
     }
-    
+
     var lastUpdateDisplay: String {
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .short

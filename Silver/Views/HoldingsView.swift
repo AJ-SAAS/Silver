@@ -15,39 +15,45 @@ struct HoldingsView: View {
                         .foregroundColor(.red)
                         .padding()
                         .frame(maxWidth: .infinity)
-                        .background(Color.white.opacity(0.1))
+                        .background(Color.red.opacity(0.2))
                         .cornerRadius(12)
                         .padding(.horizontal, 24)
                 }
 
                 if holdingsVM.holdings.isEmpty {
-                    VStack(spacing: 8) {
+                    VStack(spacing: 16) {
+                        Spacer()
                         Text("No holdings yet")
-                            .foregroundColor(.white.opacity(0.7))
+                            .font(.title2)
+                            .foregroundColor(.white)
                         Text("Tap + to add your first silver item")
-                            .foregroundColor(.white.opacity(0.5))
+                            .foregroundColor(.white.opacity(0.7))
+                        Spacer()
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     ScrollView {
-                        VStack(spacing: 12) {
+                        VStack(spacing: 16) {
                             ForEach(holdingsVM.holdings) { item in
                                 HoldingCard(item: item, currentSpot: homeVM.currentSpot)
                             }
                         }
-                        .padding(.horizontal, 24)
+                        .padding(.horizontal, 20)
                         .padding(.top, 16)
+                        .padding(.bottom, 100) // avoid tab bar overlap
                     }
                 }
             }
-            .navigationTitle("Holdings")
+            .navigationTitle("My Stack")
+            .navigationBarTitleDisplayMode(.inline)
+            .foregroundStyle(.white) // Title white
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         showingAddItem = true
                     } label: {
                         Image(systemName: "plus.circle.fill")
-                            .font(.system(size: 24))
+                            .font(.system(size: 26))
                             .foregroundColor(.green)
                     }
                 }
@@ -58,13 +64,19 @@ struct HoldingsView: View {
                     showingAddItem = false
                 }
             }
-            .background(
-                LinearGradient(colors: [Color(red: 0.06, green: 0.09, blue: 0.17),
-                                        Color(red: 0.12, green: 0.16, blue: 0.23)],
-                               startPoint: .top,
-                               endPoint: .bottom)
-                    .ignoresSafeArea()
-            )
+            .background(AppBackground()) // Consistent dark gradient
         }
+    }
+}
+
+// Reusable background (move to shared file later)
+private struct AppBackground: View {
+    var body: some View {
+        LinearGradient(
+            colors: [Color(red: 0.05, green: 0.08, blue: 0.14), Color(red: 0.10, green: 0.14, blue: 0.20)],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+        .ignoresSafeArea()
     }
 }

@@ -5,12 +5,16 @@ import Combine
 final class PriceService: ObservableObject {
     
     // MARK: - Published state
-    @Published var currentSpot: Double = 92.50
+    @Published var currentSpot: Double = 0.0
+    @Published var previousSpot: Double = 0.0
     @Published var changePercentToday: Double = 0.0
-    @Published var goldSilverRatio: Double = 80.0
+    @Published var goldSilverRatio: Double = 0.0
     @Published var lastUpdate = Date()
     @Published var errorMessage: String?
     @Published var isLoading: Bool = false
+    
+    // Future: for sparkline graph
+    @Published var historicalSpots: [Date: Double] = [:]
     
     // MARK: - Offline cache
     private let lastSpotKey = "LastSpotPrice"
@@ -22,7 +26,7 @@ final class PriceService: ObservableObject {
     }
     
     init() {
-        // Load cached price if available
+        // Load cached
         if let lastPrice = UserDefaults.standard.value(forKey: lastSpotKey) as? Double,
            let lastDate = UserDefaults.standard.value(forKey: lastUpdateKey) as? Date {
             currentSpot = lastPrice
@@ -31,17 +35,13 @@ final class PriceService: ObservableObject {
         Task { await fetchLatestPrices() }
     }
     
-    // MARK: - Fetch latest prices
     func fetchLatestPrices() async {
         guard !isLoading else { return }
         isLoading = true
         errorMessage = nil
         
         guard let url = URL(string: endpoint) else {
-            await MainActor.run {
-                errorMessage = "Invalid API URL"
-                isLoading = false
-            }
+            await MainActor.run { errorMessage = "Invalid API URL"; isLoading = false }
             return
         }
         
@@ -51,21 +51,25 @@ final class PriceService: ObservableObject {
             guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let success = json["success"] as? Bool, success,
                   let rates = json["rates"] as? [String: Double],
-                  let silverRate = rates["XAG"],
-                  let goldRate = rates["XAU"]
+                  let xagRate = rates["XAG"],
+                  let xauRate = rates["XAU"]
             else {
-                throw NSError(domain: "MetalpriceAPI", code: -1,
-                              userInfo: [NSLocalizedDescriptionKey: "Invalid response"])
+                throw NSError(domain: "MetalpriceAPI", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid response"])
             }
             
             await MainActor.run {
-                changePercentToday = ((silverRate - currentSpot) / currentSpot) * 100
-                currentSpot = silverRate
-                goldSilverRatio = goldRate / silverRate
+                let newSpot = 1 / xagRate  // Correct: USD per oz
+                previousSpot = currentSpot
+                currentSpot = newSpot
+                
+                let goldSpot = 1 / xauRate
+                goldSilverRatio = goldSpot / newSpot  // Correct ratio
+                
+                changePercentToday = previousSpot > 0 ? ((newSpot - previousSpot) / previousSpot) * 100 : 0
+                
                 lastUpdate = Date()
                 errorMessage = nil
                 
-                // Cache latest price
                 UserDefaults.standard.set(currentSpot, forKey: lastSpotKey)
                 UserDefaults.standard.set(lastUpdate, forKey: lastUpdateKey)
             }
@@ -76,10 +80,9 @@ final class PriceService: ObservableObject {
             print("❌ PriceService fetch error:", error)
         }
         
-        await MainActor.run { isLoading = false }
+        isLoading = false
     }
     
-    // MARK: - Last update string
     var lastUpdateString: String {
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .short

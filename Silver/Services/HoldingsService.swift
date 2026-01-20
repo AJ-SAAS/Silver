@@ -23,10 +23,11 @@ final class HoldingsService: HoldingsServiceProtocol {
     }
 
     func addItem(_ item: SilverItem, for userId: String) async throws {
+        // No await needed here – addDocument is already async
         try await db.collection("users")
             .document(userId)
             .collection("holdings")
-            .addDocument(from: item) // async Firestore call
+            .addDocument(from: item)
     }
 
     func deleteItem(_ item: SilverItem, for userId: String) async throws {

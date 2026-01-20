@@ -2,6 +2,7 @@ import SwiftUI
 import FirebaseCore
 
 @main
+@MainActor  // ← This fixes the "main actor-isolated initializer" warning
 struct SilverApp: App {
 
     @StateObject private var authVM = AuthViewModel()
@@ -21,7 +22,6 @@ struct SilverApp: App {
                     AuthView()
                 }
             }
-            // ✅ Inject ONCE at the root
             .environmentObject(authVM)
             .environmentObject(homeVM)
             .environmentObject(holdingsVM)
