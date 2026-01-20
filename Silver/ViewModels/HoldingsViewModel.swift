@@ -1,18 +1,20 @@
 import Foundation
+import Combine
 import FirebaseAuth
 
 @MainActor
 final class HoldingsViewModel: ObservableObject {
 
     @Published var holdings: [SilverItem] = []
-    @Published var isLoading: Bool = false
+    @Published var isLoading = false
     @Published var errorMessage: String?
 
     private let service: HoldingsServiceProtocol
     private var userId: String? { Auth.auth().currentUser?.uid }
 
-    init(service: HoldingsServiceProtocol = HoldingsService()) {
+    init(service: HoldingsServiceProtocol = HoldingsService()) { // synchronous init is fine
         self.service = service
+        Task { await loadHoldings() } // load holdings on init
     }
 
     func loadHoldings() async {
@@ -20,6 +22,7 @@ final class HoldingsViewModel: ObservableObject {
             errorMessage = "User not signed in"
             return
         }
+
         isLoading = true
         errorMessage = nil
 
@@ -27,40 +30,37 @@ final class HoldingsViewModel: ObservableObject {
             holdings = try await service.fetchHoldings(for: userId)
         } catch {
             errorMessage = "Failed to load holdings"
-            print("❌ HoldingsViewModel loadHoldings error:", error)
+            print("❌ HoldingsViewModel loadHoldings error:", error.localizedDescription)
         }
 
         isLoading = false
     }
 
     func addItem(_ item: SilverItem) async {
-        guard let userId = userId else { return }
+        guard let userId = userId else {
+            errorMessage = "User not signed in"
+            return
+        }
         do {
             try await service.addItem(item, for: userId)
             await loadHoldings()
         } catch {
             errorMessage = "Failed to add item"
-            print("❌ HoldingsViewModel addItem error:", error)
+            print("❌ HoldingsViewModel addItem error:", error.localizedDescription)
         }
     }
 
     func deleteItem(_ item: SilverItem) async {
-        guard let userId = userId else { return }
+        guard let userId = userId else {
+            errorMessage = "User not signed in"
+            return
+        }
         do {
             try await service.deleteItem(item, for: userId)
             await loadHoldings()
         } catch {
             errorMessage = "Failed to delete item"
-            print("❌ HoldingsViewModel deleteItem error:", error)
+            print("❌ HoldingsViewModel deleteItem error:", error.localizedDescription)
         }
-    }
-
-    // Computed totals
-    func totalStackValue(currentSpot: Double) -> Double {
-        holdings.reduce(0) { $0 + $1.currentValue(currentSpot: currentSpot) }
-    }
-
-    func totalOunces() -> Double {
-        holdings.reduce(0) { $0 + $1.totalWeight }
     }
 }

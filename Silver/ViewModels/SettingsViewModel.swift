@@ -2,22 +2,17 @@ import Foundation
 import Combine
 import FirebaseAuth
 
-@Observable
-final class SettingsViewModel {
+final class SettingsViewModel: ObservableObject {  // ← ObservableObject, not @Observable
 
-    var userEmail: String? = nil
-    
-    private let authVM: AuthViewModel
-    
+    @Published var userEmail: String? = nil
+
+    var authVM: AuthViewModel
+
     init(authVM: AuthViewModel) {
         self.authVM = authVM
-        
-        // Load current user email if available
-        if let firebaseUser = Auth.auth().currentUser {
-            userEmail = firebaseUser.email
-        }
+        self.userEmail = Auth.auth().currentUser?.email
     }
-    
+
     func signOut() {
         authVM.signOut()
     }

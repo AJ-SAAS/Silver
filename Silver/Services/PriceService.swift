@@ -1,16 +1,16 @@
 import Foundation
 import SwiftUI
+import Combine
 
-@Observable
-final class PriceService {
+final class PriceService: ObservableObject {
     
     // MARK: - Published state
-    var currentSpot: Double = 92.50
-    var changePercentToday: Double = 0.0
-    var goldSilverRatio: Double = 80.0
-    var lastUpdate = Date()
-    var errorMessage: String?
-    var isLoading = false
+    @Published var currentSpot: Double = 92.50
+    @Published var changePercentToday: Double = 0.0
+    @Published var goldSilverRatio: Double = 80.0
+    @Published var lastUpdate = Date()
+    @Published var errorMessage: String?
+    @Published var isLoading: Bool = false
     
     // MARK: - Offline cache
     private let lastSpotKey = "LastSpotPrice"

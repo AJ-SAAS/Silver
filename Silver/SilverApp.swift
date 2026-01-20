@@ -3,23 +3,28 @@ import FirebaseCore
 
 @main
 struct SilverApp: App {
-    
+
+    @StateObject private var authVM = AuthViewModel()
+    @StateObject private var homeVM = HomeViewModel()
+    @StateObject private var holdingsVM = HoldingsViewModel()
+
     init() {
         FirebaseApp.configure()
     }
-    
-    @StateObject private var authVM = AuthViewModel()  // Persist across views
-    
+
     var body: some Scene {
         WindowGroup {
             Group {
-                if authVM.isAuthenticated {
+                if authVM.user != nil {
                     TabBarView()
                 } else {
                     AuthView()
                 }
             }
-            .environmentObject(authVM) // Child views can use @EnvironmentObject
+            // ✅ Inject ONCE at the root
+            .environmentObject(authVM)
+            .environmentObject(homeVM)
+            .environmentObject(holdingsVM)
         }
     }
 }

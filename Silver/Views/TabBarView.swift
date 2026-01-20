@@ -1,45 +1,111 @@
 import SwiftUI
 
 struct TabBarView: View {
-    
+
     @State private var selectedTab: Tab = .home
-    
+
     enum Tab {
-        case home
-        case holdings
-        case settings
+        case home, holdings, settings
     }
-    
+
     var body: some View {
-        TabView(selection: $selectedTab) {
-            
-            // MARK: Home Tab
-            HomeView()
-                .tabItem {
-                    Label("Home", systemImage: "chart.line.uptrend.xyaxis")
+        ZStack(alignment: .bottom) {
+
+            // MARK: Main Content
+            Group {
+                switch selectedTab {
+                case .home:
+                    HomeView()
+                case .holdings:
+                    HoldingsView()
+                case .settings:
+                    SettingsView()
                 }
-                .tag(Tab.home)
-            
-            // MARK: Holdings Tab
-            HoldingsView()
-                .tabItem {
-                    Label("My Stack", systemImage: "cube.box.fill")
-                }
-                .tag(Tab.holdings)
-            
-            // MARK: Settings Tab
-            SettingsView()
-                .tabItem {
-                    Label("Settings", systemImage: "gearshape.fill")
-                }
-                .tag(Tab.settings)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(
+                LinearGradient(
+                    colors: [
+                        Color(red: 0.06, green: 0.09, blue: 0.17),
+                        Color(red: 0.12, green: 0.16, blue: 0.23)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+            .ignoresSafeArea()   // ✅ Removes black bars
+
+            // MARK: Custom Tab Bar
+            HStack {
+                TabBarButton(
+                    tab: .home,
+                    selectedTab: $selectedTab,
+                    icon: "chart.line.uptrend.xyaxis",
+                    label: "Home"
+                )
+
+                TabBarButton(
+                    tab: .holdings,
+                    selectedTab: $selectedTab,
+                    icon: "cube.box.fill",
+                    label: "Holdings"
+                )
+
+                TabBarButton(
+                    tab: .settings,
+                    selectedTab: $selectedTab,
+                    icon: "gearshape.fill",
+                    label: "Settings"
+                )
+            }
+            .padding(.top, 12)
+            .padding(.bottom, bottomSafeAreaPadding())
+            .background(
+                Color(red: 0.12, green: 0.16, blue: 0.23)
+                    .ignoresSafeArea(edges: .bottom)
+            )
         }
-        .accentColor(.blue) // Your brand color
+    }
+
+    // MARK: Safe Area Helper
+    private func bottomSafeAreaPadding() -> CGFloat {
+        UIApplication.shared.connectedScenes
+            .compactMap { ($0 as? UIWindowScene)?.keyWindow }
+            .first?
+            .safeAreaInsets.bottom ?? 16
     }
 }
 
-struct TabBarView_Previews: PreviewProvider {
-    static var previews: some View {
-        TabBarView()
+//
+// MARK: - TabBarButton (REQUIRED)
+//
+
+struct TabBarButton: View {
+
+    let tab: TabBarView.Tab
+    @Binding var selectedTab: TabBarView.Tab
+    let icon: String
+    let label: String
+
+    var body: some View {
+        Button {
+            selectedTab = tab
+        } label: {
+            VStack(spacing: 4) {
+                Image(systemName: icon)
+                    .font(.system(size: 22, weight: .semibold))
+
+                Text(label)
+                    .font(.caption.weight(.semibold))
+            }
+            .foregroundColor(
+                selectedTab == tab ? .green : .white.opacity(0.5)
+            )
+            .frame(maxWidth: .infinity)
+        }
     }
+}
+
+#Preview {
+    TabBarView()
 }

@@ -1,62 +1,51 @@
-import SwiftUI
+import Foundation
 import Combine
+import FirebaseAuth
 
-@MainActor
 final class AuthViewModel: ObservableObject {
 
-    @Published var isAuthenticated: Bool = false
-    @Published var isLoading: Bool = false
-    @Published var errorMessage: String?
+    @Published var user: AppUser?
 
-    private let authService: AuthServiceProtocol
-    private var cancellables = Set<AnyCancellable>()
+    private let service: AuthServiceProtocol
 
-    init(authService: AuthServiceProtocol = AuthService()) {
-        self.authService = authService
-        
-        authService.authStatePublisher
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] user in
-                self?.isAuthenticated = user != nil
-                self?.isLoading = false
-            }
-            .store(in: &cancellables)
+    init(service: AuthServiceProtocol = AuthService()) {
+        self.service = service
+        if let firebaseUser = service.currentUser {
+            self.user = AppUser(user: firebaseUser)
+        }
     }
 
+    @MainActor
     func signIn(email: String, password: String) async {
-        guard !isLoading else { return }
-        isLoading = true
-        errorMessage = nil
-        
         do {
-            try await authService.signIn(email: email, password: password)
+            try await service.signIn(email: email, password: password)
+            if let firebaseUser = service.currentUser {
+                user = AppUser(user: firebaseUser)
+            }
         } catch {
-            errorMessage = error.localizedDescription
+            print("❌ SignIn error:", error.localizedDescription)
         }
-        
-        isLoading = false
     }
 
+    @MainActor
     func signUp(email: String, password: String) async {
-        guard !isLoading else { return }
-        isLoading = true
-        errorMessage = nil
-        
         do {
-            try await authService.signUp(email: email, password: password)
+            try await service.signUp(email: email, password: password)
+            if let firebaseUser = service.currentUser {
+                user = AppUser(user: firebaseUser)
+            }
         } catch {
-            errorMessage = error.localizedDescription
+            print("❌ SignUp error:", error.localizedDescription)
         }
-        
-        isLoading = false
     }
 
+    @MainActor
     func signOut() {
         do {
-            try authService.signOut()
-            isAuthenticated = false
+            try Auth.auth().signOut()
+            user = nil
         } catch {
-            errorMessage = error.localizedDescription
+            print("❌ SignOut failed:", error)
         }
     }
 }

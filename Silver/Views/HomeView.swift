@@ -1,78 +1,43 @@
 import SwiftUI
 
 struct HomeView: View {
-    
-    @StateObject private var priceService = PriceService()
-    
+
+    @EnvironmentObject var homeVM: HomeViewModel
+
     var body: some View {
-        NavigationView {
-            VStack(spacing: 24) {
+        ScrollView {
+            VStack(spacing: 16) {
                 
-                // Header
-                Text("Silver Spot Price")
-                    .font(.title2.bold())
-                    .padding(.top)
-                
-                // Price or loading/error
-                if priceService.isLoading {
-                    ProgressView()
-                        .scaleEffect(1.5)
-                        .padding()
-                } else if let error = priceService.errorMessage {
+                if let error = homeVM.errorMessage {
                     Text(error)
                         .foregroundColor(.red)
-                        .multilineTextAlignment(.center)
-                        .padding()
-                } else {
-                    VStack(spacing: 12) {
-                        Text("$\(priceService.currentSpot, specifier: "%.2f")")
-                            .font(.system(size: 48, weight: .bold))
-                            .foregroundColor(.green)
-                        
-                        Text("Change today: \(priceService.changePercentToday, specifier: "%.2f")%")
-                            .font(.headline)
-                            .foregroundColor(priceService.changePercentToday >= 0 ? .green : .red)
-                        
-                        Text("Gold:Silver ratio \(priceService.goldSilverRatio, specifier: "%.2f")")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                        
-                        Text(priceService.lastUpdateString)
-                            .font(.caption)
-                            .foregroundColor(.gray)
-                    }
-                    .padding()
-                    .background(
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(Color(UIColor.secondarySystemBackground))
-                    )
-                    .padding(.horizontal)
-                }
-                
-                Spacer()
-                
-                // Refresh Button
-                Button(action: {
-                    Task { await priceService.fetchLatestPrices() }
-                }) {
-                    Text("Refresh Prices")
-                        .font(.headline)
-                        .foregroundColor(.white)
                         .padding()
                         .frame(maxWidth: .infinity)
-                        .background(Color.blue)
+                        .background(Color.white.opacity(0.1))
                         .cornerRadius(12)
-                        .padding(.horizontal)
+                        .padding(.horizontal, 24)
                 }
-
+                
+                VStack(spacing: 16) {
+                    PriceCard(spotPrice: homeVM.currentSpot,
+                              changePercent: homeVM.changePercentToday,
+                              goldSilverRatio: homeVM.goldSilverRatio)
+                    
+                    QuickStatsGrid(homeVM: homeVM)
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 16)
             }
-            .navigationTitle("Silver Dashboard")
         }
-    }
-}
-
-struct HomeView_Previews: PreviewProvider {
-    static var previews: some View {
-        HomeView()
+        .background(
+            LinearGradient(colors: [Color(red: 0.06, green: 0.09, blue: 0.17),
+                                    Color(red: 0.12, green: 0.16, blue: 0.23)],
+                           startPoint: .top,
+                           endPoint: .bottom)
+                .ignoresSafeArea()
+        )
+        .refreshable {
+            await homeVM.fetchLatestPrices()
+        }
     }
 }

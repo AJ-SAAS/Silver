@@ -1,86 +1,70 @@
 import SwiftUI
 
 struct HoldingsView: View {
-    
-    @StateObject private var vm = HoldingsViewModel()
-    @StateObject private var priceService = PriceService() // for currentSpot
-    
-    @State private var showAddSheet = false
-    
+
+    @EnvironmentObject var holdingsVM: HoldingsViewModel
+    @EnvironmentObject var homeVM: HomeViewModel
+    @State private var showingAddItem = false
+
     var body: some View {
         NavigationView {
-            VStack {
-                
-                if vm.isLoading {
-                    ProgressView().scaleEffect(1.5)
-                } else if let error = vm.errorMessage {
+            VStack(spacing: 16) {
+
+                if let error = holdingsVM.errorMessage {
                     Text(error)
                         .foregroundColor(.red)
                         .padding()
+                        .frame(maxWidth: .infinity)
+                        .background(Color.white.opacity(0.1))
+                        .cornerRadius(12)
+                        .padding(.horizontal, 24)
+                }
+
+                if holdingsVM.holdings.isEmpty {
+                    VStack(spacing: 8) {
+                        Text("No holdings yet")
+                            .foregroundColor(.white.opacity(0.7))
+                        Text("Tap + to add your first silver item")
+                            .foregroundColor(.white.opacity(0.5))
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
-                    List {
-                        Section(header: Text("My Stack")) {
-                            ForEach(vm.holdings) { item in
-                                VStack(alignment: .leading) {
-                                    Text("\(item.type) x\(item.quantity)")
-                                        .font(.headline)
-                                    
-                                    Text("Weight: \(item.totalWeight, specifier: "%.2f") oz")
-                                        .font(.subheadline)
-                                    
-                                    Text("Current Value: $\(item.currentValue(currentSpot: priceService.currentSpot), specifier: "%.2f")")
-                                        .font(.subheadline)
-                                    
-                                    if let pl = item.unrealizedPL(currentSpot: priceService.currentSpot) {
-                                        Text("Unrealized P/L: $\(pl, specifier: "%.2f")")
-                                            .foregroundColor(pl >= 0 ? .green : .red)
-                                            .font(.subheadline)
-                                    }
-                                }
-                            }
-                            .onDelete { indexSet in
-                                Task {
-                                    for index in indexSet {
-                                        await vm.deleteItem(vm.holdings[index])
-                                    }
-                                }
+                    ScrollView {
+                        VStack(spacing: 12) {
+                            ForEach(holdingsVM.holdings) { item in
+                                HoldingCard(item: item, currentSpot: homeVM.currentSpot)
                             }
                         }
+                        .padding(.horizontal, 24)
+                        .padding(.top, 16)
                     }
-                    .listStyle(.insetGrouped)
-                }
-                
-                // Totals
-                VStack(spacing: 8) {
-                    Text("Total Stack Value: $\(vm.totalStackValue(currentSpot: priceService.currentSpot), specifier: "%.2f")")
-                        .bold()
-                    Text("Total Ounces: \(vm.totalOunces(), specifier: "%.2f")")
-                        .foregroundColor(.secondary)
-                }
-                .padding()
-                
-                // Add button
-                Button(action: { showAddSheet.toggle() }) {
-                    Text("Add Item")
-                        .font(.headline)
-                        .foregroundColor(.white)
-                        .padding()
-                        .frame(maxWidth: .infinity)
-                        .background(Color.blue)
-                        .cornerRadius(12)
-                        .padding(.horizontal)
                 }
             }
-            .navigationTitle("My Holdings")
-            .sheet(isPresented: $showAddSheet) {
+            .navigationTitle("Holdings")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        showingAddItem = true
+                    } label: {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 24))
+                            .foregroundColor(.green)
+                    }
+                }
+            }
+            .sheet(isPresented: $showingAddItem) {
                 AddItemView { newItem in
-                    Task { await vm.addItem(newItem) }
-                    showAddSheet = false
+                    Task { await holdingsVM.addItem(newItem) }
+                    showingAddItem = false
                 }
             }
-            .task {
-                await vm.loadHoldings()
-            }
+            .background(
+                LinearGradient(colors: [Color(red: 0.06, green: 0.09, blue: 0.17),
+                                        Color(red: 0.12, green: 0.16, blue: 0.23)],
+                               startPoint: .top,
+                               endPoint: .bottom)
+                    .ignoresSafeArea()
+            )
         }
     }
 }

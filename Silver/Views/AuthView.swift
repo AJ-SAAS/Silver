@@ -2,106 +2,94 @@ import SwiftUI
 
 struct AuthView: View {
     
-    @EnvironmentObject private var viewModel: AuthViewModel
-    
-    @State private var email = ""
-    @State private var password = ""
-    @State private var isSignInMode = true
+    @State private var email: String = ""
+    @State private var password: String = ""
+    @State private var isSignUp: Bool = true   // toggle between sign up and sign in
+    @EnvironmentObject var authVM: AuthViewModel
     
     var body: some View {
-        ZStack {
-            Color(.systemBackground).ignoresSafeArea()
-            
-            VStack(spacing: 40) {
-                // Branding
-                VStack(spacing: 12) {
-                    Image(systemName: "cube.box.2.fill")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 88, height: 88)
-                        .foregroundStyle(.blue.gradient)
+        VStack(spacing: 0) {
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 40) {
                     
-                    Text("Silver")
-                        .font(.system(.largeTitle, design: .rounded, weight: .bold))
+                    // MARK: Header
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(isSignUp ? "Create Account" : "Welcome Back")
+                            .font(.largeTitle.weight(.bold))
+                            .foregroundColor(.white)
+                        Text(isSignUp ?
+                             "Sign up to start tracking your silver portfolio" :
+                             "Sign in to continue tracking your silver portfolio")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundColor(.white.opacity(0.7))
+                    }
+                    .padding(.top, 60)
+                    .padding(.horizontal, 24)
                     
-                    Text("Track • Stack • Stay Ahead")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                
-                // Form
-                VStack(spacing: 20) {
-                    TextField("Email", text: $email)
-                        .textContentType(.emailAddress)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .keyboardType(.emailAddress)
-                        .padding()
-                        .background(Color(.secondarySystemBackground))
-                        .clipShape(.rect(cornerRadius: 14))
+                    // MARK: Form Fields
+                    VStack(spacing: 16) {
+                        TextField("Email", text: $email)
+                            .keyboardType(.emailAddress)
+                            .textInputAutocapitalization(.none)
+                            .padding()
+                            .background(Color.white.opacity(0.1))
+                            .cornerRadius(12)
+                            .foregroundColor(.white)
+                        
+                        SecureField("Password", text: $password)
+                            .padding()
+                            .background(Color.white.opacity(0.1))
+                            .cornerRadius(12)
+                            .foregroundColor(.white)
+                    }
+                    .padding(.horizontal, 24)
                     
-                    SecureField(isSignInMode ? "Password" : "Create password", text: $password)
-                        .textContentType(isSignInMode ? .password : .newPassword)
-                        .padding()
-                        .background(Color(.secondarySystemBackground))
-                        .clipShape(.rect(cornerRadius: 14))
-                    
+                    // MARK: Primary Button
                     Button {
                         Task {
-                            if isSignInMode {
-                                await viewModel.signIn(email: email, password: password)
+                            if isSignUp {
+                                await authVM.signUp(email: email, password: password)
                             } else {
-                                await viewModel.signUp(email: email, password: password)
+                                await authVM.signIn(email: email, password: password)
                             }
                         }
                     } label: {
-                        ZStack {
-                            if viewModel.isLoading {
-                                ProgressView().tint(.white)
-                            } else {
-                                Text(isSignInMode ? "Sign In" : "Create Account")
-                                    .font(.headline)
-                            }
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(Color.blue)
-                        .foregroundStyle(.white)
-                        .clipShape(.rect(cornerRadius: 14))
+                        Text(isSignUp ? "Sign Up" : "Sign In")
+                            .font(.headline.weight(.bold))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.green)
+                            .cornerRadius(12)
                     }
-                    .disabled(viewModel.isLoading || email.isEmpty || password.count < 6)
+                    .padding(.horizontal, 24)
                     
-                    if let error = viewModel.errorMessage {
-                        Text(error)
-                            .font(.footnote)
-                            .foregroundStyle(.red)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal)
+                    // MARK: Toggle Link
+                    Button {
+                        withAnimation(.easeInOut) {
+                            isSignUp.toggle()
+                        }
+                    } label: {
+                        Text(isSignUp ?
+                             "Already have an account? Sign in here" :
+                             "Don't have an account? Sign up here")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundColor(.white.opacity(0.7))
                     }
-                }
-                .padding(.horizontal, 28)
-                
-                Spacer()
-                
-                // Toggle
-                Button {
-                    withAnimation(.easeInOut) {
-                        isSignInMode.toggle()
-                    }
-                } label: {
-                    HStack(spacing: 6) {
-                        Text(isSignInMode ? "Need an account?" : "Already have an account?")
-                            .foregroundStyle(.secondary)
-                        Text(isSignInMode ? "Sign up" : "Sign in")
-                            .fontWeight(.semibold)
-                            .foregroundStyle(.blue)
-                    }
-                    .font(.subheadline)
+                    
+                    Spacer(minLength: 100)
                 }
             }
-            .padding(.top, 60)
-            .padding(.bottom, 50)
         }
+        .background(
+            LinearGradient(
+                colors: [Color(red: 0.06, green: 0.09, blue: 0.17),
+                         Color(red: 0.12, green: 0.16, blue: 0.23)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+        )
         .ignoresSafeArea(.keyboard)
     }
 }
