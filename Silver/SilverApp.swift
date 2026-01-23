@@ -2,11 +2,11 @@ import SwiftUI
 import FirebaseCore
 
 @main
-@MainActor  // ← This fixes the "main actor-isolated initializer" warning
+@MainActor
 struct SilverApp: App {
 
     @StateObject private var authVM = AuthViewModel()
-    @StateObject private var homeVM = HomeViewModel()
+    @StateObject private var homeVM = HomeViewModel()           // ← now works thanks to default in init
     @StateObject private var holdingsVM = HoldingsViewModel()
 
     init() {

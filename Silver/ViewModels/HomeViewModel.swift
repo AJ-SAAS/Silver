@@ -2,7 +2,7 @@ import Foundation
 import SwiftUI
 import Combine
 
-@MainActor
+@preconcurrency @MainActor
 final class HomeViewModel: ObservableObject {
 
     @Published var currentSpot: Double = 0.0
@@ -14,6 +14,7 @@ final class HomeViewModel: ObservableObject {
 
     private let priceService: PriceService
 
+    // ← Added default = PriceService() so no need to pass it explicitly in SilverApp
     init(priceService: PriceService = PriceService()) {
         self.priceService = priceService
 
@@ -24,14 +25,15 @@ final class HomeViewModel: ObservableObject {
         priceService.$errorMessage.assign(to: &$errorMessage)
         priceService.$isLoading.assign(to: &$isLoading)
 
-        Task {
-            await priceService.fetchLatestPrices()
-        }
+        Task { await priceService.fetchLatestPrices() }
     }
 
-    // Public method for views to trigger refresh safely
     func refreshPrices() async {
         await priceService.fetchLatestPrices()
+    }
+
+    var historicalSpots: [Date: Double] {
+        priceService.historicalSpots
     }
 
     var lastUpdateDisplay: String {

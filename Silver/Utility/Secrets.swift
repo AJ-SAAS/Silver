@@ -1,11 +1,11 @@
 import Foundation
 
 enum Secrets {
-    static let metalPriceAPIKey: String = {
+    static let rapidApiYahooKey: String = {
         guard let key = Bundle.main.object(
-            forInfoDictionaryKey: "METALPRICE_API_KEY"
+            forInfoDictionaryKey: "RAPIDAPI_YAHOO_KEY"   // ← this must match the key in Info.plist / .xcconfig
         ) as? String else {
-            fatalError("❌ METALPRICE_API_KEY missing. Check Info.plist or xcconfig setup")
+            fatalError("❌ RAPIDAPI_YAHOO_KEY missing. Check Info.plist or .xcconfig setup")
         }
         return key
     }()

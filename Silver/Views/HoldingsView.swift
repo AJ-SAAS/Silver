@@ -1,4 +1,5 @@
 import SwiftUI
+import Charts
 
 struct HoldingsView: View {
 
@@ -8,52 +9,106 @@ struct HoldingsView: View {
 
     var body: some View {
         NavigationView {
-            VStack(spacing: 16) {
+            ScrollView {
+                VStack(spacing: 24) {
 
-                if let error = holdingsVM.errorMessage {
-                    Text(error)
-                        .foregroundColor(.red)
-                        .padding()
-                        .frame(maxWidth: .infinity)
-                        .background(Color.red.opacity(0.2))
-                        .cornerRadius(12)
-                        .padding(.horizontal, 24)
-                }
-
-                if holdingsVM.holdings.isEmpty {
-                    VStack(spacing: 16) {
-                        Spacer()
-                        Text("No holdings yet")
-                            .font(.title2)
-                            .foregroundColor(.white)
-                        Text("Tap + to add your first silver item")
+                    // Total Value + P/L
+                    VStack(spacing: 12) {
+                        Text("Total Stack Value")
+                            .font(.subheadline)
                             .foregroundColor(.white.opacity(0.7))
-                        Spacer()
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    ScrollView {
-                        VStack(spacing: 16) {
-                            ForEach(holdingsVM.holdings) { item in
-                                HoldingCard(item: item, currentSpot: homeVM.currentSpot)
+                        Text("$\(holdingsVM.totalCurrentValue(spot: homeVM.currentSpot), specifier: "%.2f")")
+                            .font(.system(size: 48, weight: .bold, design: .rounded))
+                            .foregroundColor(.white)
+
+                        if let pl = holdingsVM.totalUnrealizedPL(spot: homeVM.currentSpot) {
+                            let totalValue = holdingsVM.totalCurrentValue(spot: homeVM.currentSpot)
+                            if totalValue > 0 {
+                                let plPct = (pl / totalValue) * 100
+                                HStack(spacing: 8) {
+                                    Image(systemName: pl >= 0 ? "arrow.up.right" : "arrow.down.right")
+                                        .font(.title3)
+                                    Text("\(pl >= 0 ? "+" : "")\(pl, specifier: "%.2f")")
+                                        .font(.title3.bold())
+                                    Text("(\(plPct, specifier: "%.2f")%)")
+                                        .font(.title3)
+                                }
+                                .foregroundColor(pl >= 0 ? .green : .red)
                             }
                         }
-                        .padding(.horizontal, 20)
-                        .padding(.top, 16)
-                        .padding(.bottom, 100) // avoid tab bar overlap
                     }
+                    .padding(.top, 40)
+
+                    // Sparkline
+                    if !homeVM.historicalSpots.isEmpty {
+                        Chart(homeVM.historicalSpots.sorted(by: { $0.key < $1.key }), id: \.key) { date, price in
+                            LineMark(
+                                x: .value("Date", date),
+                                y: .value("Price", price)
+                            )
+                            .foregroundStyle(.white)
+                            .interpolationMethod(.catmullRom)
+
+                            AreaMark(
+                                x: .value("Date", date),
+                                y: .value("Price", price)
+                            )
+                            .foregroundStyle(.white.opacity(0.15))
+                        }
+                        .chartXAxis(.hidden)
+                        .chartYAxis(.hidden)
+                        .frame(height: 100)
+                        .padding(.horizontal)
+                        .background(Color.black.opacity(0.3))
+                        .cornerRadius(16)
+                    } else if homeVM.isLoading {
+                        ProgressView("Fetching price trend...")
+                            .frame(height: 100)
+                            .foregroundColor(.white)
+                    } else {
+                        Text("No trend data yet")
+                            .foregroundColor(.gray)
+                            .frame(height: 100)
+                    }
+
+                    // Add Holding button
+                    Button {
+                        showingAddItem = true
+                    } label: {
+                        Text("Add Holding")
+                            .font(.headline)
+                            .foregroundColor(.black)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(Color.green)
+                            .cornerRadius(28)
+                    }
+                    .padding(.horizontal, 40)
+
+                    // Holdings list
+                    VStack(spacing: 16) {
+                        ForEach(holdingsVM.holdings) { item in
+                            HoldingCard(item: item, currentSpot: homeVM.currentSpot)
+                        }
+                    }
+                    .padding(.horizontal, 16)
                 }
+                .padding(.bottom, 120)
             }
+            .background(AppBackground())
             .navigationTitle("My Stack")
             .navigationBarTitleDisplayMode(.inline)
-            .foregroundStyle(.white) // Title white
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarBackground(Color.black.opacity(0.8), for: .navigationBar)
+            .foregroundStyle(.white)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         showingAddItem = true
                     } label: {
                         Image(systemName: "plus.circle.fill")
-                            .font(.system(size: 26))
+                            .font(.title2)
                             .foregroundColor(.green)
                     }
                 }
@@ -64,16 +119,16 @@ struct HoldingsView: View {
                     showingAddItem = false
                 }
             }
-            .background(AppBackground()) // Consistent dark gradient
         }
     }
 }
 
-// Reusable background (move to shared file later)
+// Background
 private struct AppBackground: View {
     var body: some View {
         LinearGradient(
-            colors: [Color(red: 0.05, green: 0.08, blue: 0.14), Color(red: 0.10, green: 0.14, blue: 0.20)],
+            colors: [Color(red: 0.05, green: 0.08, blue: 0.14),
+                     Color(red: 0.10, green: 0.14, blue: 0.20)],
             startPoint: .top,
             endPoint: .bottom
         )

@@ -6,10 +6,8 @@ import FirebaseAuth
 final class HoldingsViewModel: ObservableObject {
 
     @Published var holdings: [SilverItem] = []
-    @Published var isLoading = false
+    @Published var isLoading: Bool = false
     @Published var errorMessage: String?
-    
-    // Optional: timestamp when data was last successfully loaded
     @Published var lastLoadedDate: Date?
 
     private let service: HoldingsServiceProtocol
@@ -17,13 +15,14 @@ final class HoldingsViewModel: ObservableObject {
 
     init(service: HoldingsServiceProtocol = HoldingsService()) {
         self.service = service
-        Task { await loadHoldings() }
+        
+        // Fixed: Explicitly mark Task as @MainActor to satisfy concurrency checker
+        Task { @MainActor in
+            await loadHoldings()
+        }
     }
 
-    // ────────────────────────────────────────────────
-    // Computed properties for Home screen & UI
-    // ────────────────────────────────────────────────
-
+    // Computed properties
     var totalOunces: Double {
         holdings.reduce(0) { $0 + $1.totalWeight }
     }
@@ -42,18 +41,13 @@ final class HoldingsViewModel: ObservableObject {
         return pls.reduce(0, +)
     }
 
-    // ────────────────────────────────────────────────
-    // Data loading & modification methods
-    // ────────────────────────────────────────────────
-
+    // Data loading & modification
     func loadHoldings() async {
         guard let userId = userId else {
             errorMessage = "User not signed in. Please log in to view your holdings."
-            print("❌ No user ID - check Firebase Auth (currentUser is nil)")
+            print("❌ No user ID - check Firebase Auth")
             return
         }
-
-        print("Loading holdings for user ID: \(userId)")
 
         isLoading = true
         errorMessage = nil
@@ -61,11 +55,10 @@ final class HoldingsViewModel: ObservableObject {
         do {
             holdings = try await service.fetchHoldings(for: userId)
             lastLoadedDate = Date()
-            print("✅ Successfully loaded \(holdings.count) holdings for user \(userId)")
+            print("✅ Loaded \(holdings.count) holdings for user \(userId)")
         } catch {
             errorMessage = "Failed to load holdings: \(error.localizedDescription)"
-            print("❌ HoldingsViewModel loadHoldings error:", error.localizedDescription)
-            print("Full error:", error)
+            print("❌ loadHoldings error:", error.localizedDescription)
         }
 
         isLoading = false
@@ -73,47 +66,34 @@ final class HoldingsViewModel: ObservableObject {
 
     func addItem(_ item: SilverItem) async {
         guard let userId = userId else {
-            errorMessage = "User not signed in. Please log in to add holdings."
-            print("❌ Cannot add item: No user ID - check Firebase Auth")
+            errorMessage = "User not signed in."
             return
         }
 
-        print("Adding new item for user ID: \(userId)")
-
         do {
             try await service.addItem(item, for: userId)
-            print("✅ Item added successfully")
-            await loadHoldings()  // refresh list
+            await loadHoldings()
         } catch {
             errorMessage = "Failed to add item: \(error.localizedDescription)"
-            print("❌ HoldingsViewModel addItem error:", error.localizedDescription)
-            print("Full error:", error)
         }
     }
 
     func deleteItem(_ item: SilverItem) async {
         guard let userId = userId else {
-            errorMessage = "User not signed in. Please log in to delete holdings."
-            print("❌ Cannot delete item: No user ID - check Firebase Auth")
+            errorMessage = "User not signed in."
             return
         }
 
         guard let itemId = item.id else {
-            errorMessage = "Cannot delete: Missing document ID"
-            print("❌ Delete failed: Item has no ID")
+            errorMessage = "Cannot delete: Missing ID"
             return
         }
 
-        print("Deleting item ID \(itemId) for user ID: \(userId)")
-
         do {
             try await service.deleteItem(item, for: userId)
-            print("✅ Item \(itemId) deleted successfully")
-            await loadHoldings()  // refresh list
+            await loadHoldings()
         } catch {
             errorMessage = "Failed to delete item: \(error.localizedDescription)"
-            print("❌ HoldingsViewModel deleteItem error:", error.localizedDescription)
-            print("Full error:", error)
         }
     }
 }

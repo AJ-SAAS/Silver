@@ -1,10 +1,10 @@
 import SwiftUI
+import Charts
 
 struct HomeView: View {
-    
+
     @EnvironmentObject var homeVM: HomeViewModel
     @EnvironmentObject var holdingsVM: HoldingsViewModel
-    
     @Binding var selectedTab: TabBarView.Tab
 
     var body: some View {
@@ -17,6 +17,36 @@ struct HomeView: View {
                     changePercent: homeVM.changePercentToday,
                     lastUpdate: homeVM.lastUpdateDisplay
                 )
+
+                // Sparkline (7-day trend)
+                if !homeVM.historicalSpots.isEmpty {
+                    Chart {
+                        ForEach(homeVM.historicalSpots.sorted(by: { $0.key < $1.key }), id: \.key) { date, price in
+                            LineMark(
+                                x: .value("Date", date),
+                                y: .value("Price", price)
+                            )
+                            .foregroundStyle(.green)
+                            .interpolationMethod(.catmullRom)
+
+                            AreaMark(
+                                x: .value("Date", date),
+                                y: .value("Price", price)
+                            )
+                            .foregroundStyle(.green.opacity(0.2))
+                        }
+                    }
+                    .chartXAxis(.hidden)
+                    .chartYAxis(.hidden)
+                    .frame(height: 80)
+                    .padding(.horizontal, 16)
+                    .background(Color.black.opacity(0.2))
+                    .cornerRadius(16)
+                } else {
+                    ProgressView("Loading price trend...")
+                        .frame(height: 80)
+                        .foregroundColor(.white)
+                }
 
                 // YOUR STACK VALUE + P/L – tappable
                 StackValueCard(
@@ -40,19 +70,19 @@ struct HomeView: View {
         }
         .background(AppBackground())
         .refreshable {
-            await homeVM.refreshPrices()  // Use public method (add this to HomeViewModel)
+            await homeVM.refreshPrices()
             await holdingsVM.loadHoldings()
         }
         .task {
-            await homeVM.refreshPrices()  // Initial load
+            await homeVM.refreshPrices()
             await holdingsVM.loadHoldings()
         }
     }
 }
 
-// MARK: - Stack Value Card (unchanged)
+// MARK: - Stack Value Card
 private struct StackValueCard: View {
-    
+
     @ObservedObject var viewModel: HoldingsViewModel
     let spotPrice: Double
     let isLoading: Bool

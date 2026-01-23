@@ -5,38 +5,28 @@ struct HoldingCard: View {
     let item: SilverItem
     let currentSpot: Double
 
-    private var currentValue: Double {
-        item.currentValue(currentSpot: currentSpot)
-    }
-
-    private var unrealizedPL: Double? {
-        item.unrealizedPL(currentSpot: currentSpot)
-    }
-
-    private var plPercent: Double? {
-        guard let pl = unrealizedPL, let purchase = item.purchasePricePerOz, purchase > 0 else { return nil }
-        let costBasis = purchase * item.totalWeight
-        return costBasis > 0 ? (currentValue - costBasis) / costBasis * 100 : nil
+    private var value: Double { item.currentValue(currentSpot: currentSpot) }
+    private var pl: Double? { item.unrealizedPL(currentSpot: currentSpot) }
+    private var plPct: Double? {
+        guard let p = pl, let purchase = item.purchasePricePerOz, purchase > 0 else { return nil }
+        let cost = purchase * item.totalWeight
+        return cost > 0 ? (value - cost) / cost * 100 : nil
     }
 
     private var plColor: Color {
-        guard let percent = plPercent else { return .gray }
-        return percent >= 0 ? .green : .red
+        guard let pct = plPct else { return .gray }
+        return pct >= 0 ? .green : .red
     }
 
     var body: some View {
-        HStack(alignment: .center, spacing: 16) {
+        HStack(spacing: 16) {
             // Icon
             Image(systemName: "cube.box.fill")
                 .resizable()
                 .scaledToFit()
-                .frame(width: 44, height: 44)
-                .foregroundColor(.white.opacity(0.9))
-                .background(
-                    Circle()
-                        .fill(Color.gray.opacity(0.3))
-                        .frame(width: 60, height: 60)
-                )
+                .frame(width: 48, height: 48)
+                .foregroundColor(.white)
+                .background(Circle().fill(Color.gray.opacity(0.4)))
 
             VStack(alignment: .leading, spacing: 4) {
                 Text("Silver \(item.type)")
@@ -51,34 +41,32 @@ struct HoldingCard: View {
             Spacer()
 
             VStack(alignment: .trailing, spacing: 4) {
-                Text("$\(currentValue, specifier: "%.2f")")
+                Text("$\(value, specifier: "%.2f")")
                     .font(.title3.bold())
                     .foregroundColor(.white)
 
-                if let percent = plPercent {
-                    HStack(spacing: 4) {
-                        Text("\(percent >= 0 ? "+" : "")\(percent, specifier: "%.2f")%")
+                if let pct = plPct {
+                    HStack(spacing: 6) {
+                        Text("\(pct >= 0 ? "+" : "")\(pct, specifier: "%.2f")%")
                             .font(.subheadline.bold())
-                            .foregroundColor(plColor)
-
                         Image(systemName: "triangle.fill")
                             .font(.caption)
-                            .foregroundColor(plColor)
-                            .rotationEffect(.degrees(percent >= 0 ? 0 : 180))
+                            .rotationEffect(.degrees(pct >= 0 ? 0 : 180))
                     }
+                    .foregroundColor(plColor)
                 } else {
-                    Text("No P/L")
+                    Text("No P/L data")
                         .font(.caption)
                         .foregroundColor(.gray)
                 }
             }
         }
         .padding()
-        .background(Color.white.opacity(0.06))
+        .background(Color.white.opacity(0.08))
         .cornerRadius(20)
         .overlay(
             RoundedRectangle(cornerRadius: 20)
-                .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                .stroke(Color.white.opacity(0.12), lineWidth: 1)
         )
     }
 }
